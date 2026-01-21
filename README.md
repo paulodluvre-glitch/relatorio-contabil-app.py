@@ -3,7 +3,7 @@
 Ferramenta web para automação e padronização dos relatórios semanais de desempenho e status.
 
 ## 🔗 Acesso Rápido
-**Clique aqui para acessar:** [COLOQUE_O_LINK_DO_SEU_STREAMLIT_AQUI]
+**Clique aqui para acessar:** (https://relatorio-contabil-py.streamlit.app/)
 
 > **Não é necessário instalar nada.** A ferramenta roda direto no seu navegador.
 
