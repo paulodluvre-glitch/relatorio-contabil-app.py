@@ -1,71 +1,34 @@
-# 📊 Gerador de Relatórios Contábeis
+# 📊 Sistema Integrado de gestão contábil: Python + n8n + AI
 
-Ferramenta web para automação e padronização dos relatórios semanais de desempenho e status.
+Este projeto apresenta uma solução "end-to-end" (ponta a ponta) para automação de processos contábeis. Ele une o poder de processamento do Python com a orquestração inteligente do n8n para transformar dados brutos em feedbacks estratégicos.
 
-## 🔗 Acesso Rápido
-**Clique aqui para acessar:** (https://relatorio-contabil-py.streamlit.app/)
-
-> **Não é necessário instalar nada.** A ferramenta roda direto no seu navegador.
-
----
-
-## 📝 Como Usar
-
-A ferramenta funciona em **3 etapas simples** (navegue pelo menu lateral):
-
-### 1️⃣ Gerar Base de Dados
-O primeiro passo é consolidar as planilhas soltas da semana em um arquivo mestre.
-
-1.  **Arquivos:** Arraste todas as planilhas `.xlsx` da semana para a área de upload.
-2.  **Rótulos:** Ajuste as datas da "Semana Atual" e "Passada" para saírem corretas no título.
-3.  **Dados Anteriores:** Cole a linha de porcentagens do relatório anterior (copie do Excel e cole direto).
-4.  **Gerar:** Clique no botão e **baixe o arquivo** `BASE_DE_DADOS_PARA_IA.xlsx`.
-
-> 💾 **Guarde este arquivo!** Você vai usá-lo nas próximas etapas.
+## 🔗 Links do Projeto
+* **Aplicação Web (Streamlit):** https://relatorio-contabil-py.streamlit.app/
+* **Workflow de Automação:** `automation_n8n.json` (neste repositório)
 
 ---
 
-### 2️⃣ Relatório de Desempenho (Com Metas)
-Gera o relatório visual comparando o realizado vs. metas, com classificação automática de prazos.
+## 🏗️ Arquitetura da Solução
 
-**Arquivos Necessários:**
-1.  **Base de Dados:** O arquivo gerado na etapa 1.
-2.  **Arquivo de Metas:** Planilha Excel ou CSV contendo as colunas: `Responsável`, `Empresa` e `Data Meta`.
+O ecossistema funciona em um ciclo de duas camadas:
 
-**Legenda do Relatório:**
-* ✅ **Verde (No Prazo):** Entregou a competência atual dentro da data estipulada.
-* ⚠️ **Amarelo (Atrasado):** Entregou a competência atual, mas depois da data da meta.
-* ☑️ **Azul (Competência Anterior):** Entregou competências de meses passados (regularização).
-* ❌ **Vermelho (Pendente):** Estava na meta do período, mas não foi entregue.
+### 1️⃣ Camada de Dados (Python & Streamlit)
+Uma interface web desenvolvida para que o gestor possa consolidar bases de dados do Gestta (Gerenciador de tarefas vinculado a ferramenta Dominio Web da Thomson Reuters) e metas semanais de entregas de balancetes contábeis.
+* **Funcionalidade:** Processa planilhas `.xlsx`, faz o de/para de metas e gera um relatório de desempenho visual (HTML).
+* **Output:** O arquivo processado é enviado para o **Microsoft OneDrive**, servindo de gatilho para a automação.
 
-**Como Gerar:**
-1. Suba a Base e o Arquivo de Metas.
-2. Selecione no **Calendário** o período exato da semana analisada (Segunda a Sexta/Sábado).
-3. Selecione os colaboradores que devem aparecer.
-4. Clique em **Gerar HTML** e baixe o relatório final.
+### 2️⃣ Camada de Inteligência (n8n & OpenAI)
+Um workflow automatizado que monitora o OneDrive e utiliza IA para análise crítica.
+* **Processamento:** O n8n detecta o novo relatório e utiliza o modelo **OpenAI o3-mini** para ler o desempenho da equipe.
+* **Persona "Renato":** A IA assume o papel de um gestor contábil experiente, redigindo feedbacks humanizados que citam clientes e prazos reais.
+* **Entrega:** Envio automático de e-mails via **Microsoft Outlook** com o feedback formatado e relatórios anexados.
 
----
-
-### 3️⃣ Relatório de Status (Dono Atual)
-Gera uma visão geral ("mapa de calor") de todas as empresas e seus responsáveis atuais.
-
-1.  Suba a Base de Dados.
-2.  Filtre os colaboradores desejados.
-3.  Baixe o relatório em HTML.
+## 🛠️ Tecnologias Utilizadas
+- **Linguagem Principal:** Python (Pandas e Streamlit)
+- **Automação (iPaaS):** n8n
+- **Inteligência Artificial:** OpenAI API (Reasoning Models)
+- **Infraestrutura Cloud:** Microsoft 365 (OneDrive/Outlook)
+- **Lógica de Dados:** JavaScript (no n8n para tratamento de binários)
 
 ---
-
-## ❓ Dúvidas Comuns
-
-**1. O nome do arquivo importa?**
-Não. Você pode salvar os arquivos com qualquer nome (`relatorio_final.xlsx`, `dados_joao.csv`), o sistema lê o conteúdo interno.
-
-**2. Precisa padronizar maiúsculas/minúsculas?**
-Não. O sistema entende que `Responsável`, `responsavel` e `RESPONSAVEL` são a mesma coisa.
-
-**3. O que acontece se a meta não tiver data?**
-O sistema vai considerar a meta como pendente se não for feita, mas não calculará atraso (não ficará amarelo, apenas vermelho ou verde).
-
----
-
-*Desenvolvido para agilizar a rotina contábil.* 🚀
+*Desenvolvido por Paulo Renato - Foco em Automação, Eficiência Operacional e IA.*
