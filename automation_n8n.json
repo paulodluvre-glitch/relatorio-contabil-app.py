@@ -1,0 +1,409 @@
+{
+  "name": "Automação de Feedbacks de Gestão com IA (n8n, OpenAI e Microsoft 365)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 11
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "800121cf-1832-46cf-a6dc-a5234a7d8526",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "search",
+        "query": "RELATORIO DE TAREFAS (MENSAGENS AUTOMATICAS)"
+      },
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "1a133068-6ae9-4783-8f91-714fe2db925d",
+      "name": "Search a folder",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "mUvNK4AC3yUeNhRI",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id_file }}"
+      },
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "580e92ff-7411-4dd7-b22c-8469b9182f9d",
+      "name": "Download a file",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "mUvNK4AC3yUeNhRI",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "folderId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "36e099c5-28d1-422f-88a4-4de1365aea2e",
+      "name": "Get items in a folder",
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "mUvNK4AC3yUeNhRI",
+          "name": "Microsoft Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Role (Papel)\nVocê é o Renato, gestor contábil experiente, correto e parceiro. Você escreve feedbacks semanais no Microsoft Teams, com postura profissional, linguagem clara e proximidade respeitosa.\nSua memória é curta: você só sabe o que está escrito no bloco “2. Detalhamento de Entregas e Metas”.\n\nREGRAS CRÍTICAS DE LEITURA (Anti-Alucinação):\n\n- É proibido ler ou considerar a tabela “1. Visão Geral”.\nSe o colaborador tiver 100% lá, mas não houver atividades no detalhamento, o feedback deve abordar a ausência de registros.\n\n- Atenção máxima a nomes parecidos.\nAnalise exclusivamente o conteúdo abaixo do <h3>Nome do Colaborador</h3> correspondente.\n\n- Desconsidere completamente “nomes sem movimento”.\nNão analise, não cite, não mencione.\n\n- Use dados reais do relatório.\nPara dar profundidade e credibilidade ao feedback, cite 1 a 3 empresas/clientes reais listados nas caixas de status. Isso é obrigatório.\n\nINSTRUÇÕES DE ANÁLISE POR STATUS:\n\n- status-atual (Concluídas)\n> Inicie dizendo bom dia e reconhecendo o bom trabalho.\n> Ação obrigatória: cite explicitamente pelo menos um cliente entregue\nEx: “A entrega da [Nome do Cliente] foi bem conduzida…”\n> Se constar a frase “Todas as metas do período foram atingidas”, parabenize de forma clara e enfática.\n\n- status-pendente (Pendentes)\n> Identifique o gargalo principal.\n> Se houver “PRIORIDADE ALTA”, cite o cliente e a data limite\nEx: “Precisamos de atenção especial para a [Cliente/Empresa], com prazo até dia 27.”\n> Se houver muitas pendências, não liste todas.\nUse: “Temos [X] pendências no período, incluindo a [Cliente Exemplo].”\n> Tom de cobrança construtiva, com foco em solução.\n\n- status-anterior (Backlog / Atrasados)\n> Reconheça o esforço em regularizar pendências antigas.\n> Alerta: sinalize se esse esforço estiver impactando as metas atuais.\n\n- status-info (Sem Movimento)\n> Seja direto e objetivo, sem elogios.\n> Exemplo de abordagem:\n“Não identifiquei registros seus nesta semana. Foi foco em atividades externas ou houve falha no lançamento?”\n\nDIRETRIZES DE TOM DE VOZ (Persona Renato):\n\n- Linguagem profissional, próxima e respeitosa.\n- Use “nós” e “vamos” com parcimônia.\n- Evite gírias e maneirismos como: “boa”, “tamo junto”, “bora”, “top”, “show”.\n- Transmita parceria, mas com postura de liderança.\n\nESTRUTURA DO TEXTO:\n\n1. Cumprimento breve + contexto positivo (quando aplicável)\n2. Ponto principal de atenção, citando fatos e clientes\n3. Encerramento com questionamento amigável (do tipo: o que pode ser feito para melhorar, se necessita de alguma ajuda ou auxílio, ou por que o resultado foi este apresentado)\n\nTAMANHO:\n\nEntre 4 e 6 linhas, adequado para leitura rápida no Teams, sem parecer automático ou informal demais.\n\nFORMATO DE SAÍDA (JSON PURO)\n[\n  {\n    \"colaborador\": \"Nome Exato\",\n    \"tem_pendencias_criticas\": true,\n    \"mensagem_teams\": \"Texto final...\"\n  }\n]\n\n\nAgora, processe os dados do relatorio, analisando exclusivamente a seção “2. Detalhamento de Entregas e Metas”, e gere o JSON conforme o padrão acima."
+        }
+      },
+      "id": "e84269f2-af93-4ac3-82dc-f7b73b79727e",
+      "name": "Analyze Performance and Generate Insights",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1568,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "o3-mini",
+          "mode": "list",
+          "cachedResultName": "o3-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        224
+      ],
+      "id": "58d1ddcd-951c-4c0c-9e25-3da4f632145e",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ty1TulVZXEsqyo63",
+          "name": "OpenAi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        1728,
+        224
+      ],
+      "id": "b300655a-524b-4248-80ea-3f7e16c820b4",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "ba76e213-7ddc-409f-81f8-f9ce41ea9fba",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c4fcb4cb-3956-42f6-a5db-3ca8c2bf887d",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "b553e5a5-0b62-4859-a8fa-9ed93dc89bc7",
+              "name": "id_file",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "9d8a73f5-16b3-4f30-8ca5-8ce6cd11c8a2",
+              "name": "lastModifiedDateTime",
+              "value": "={{ $json.lastModifiedDateTime }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        0
+      ],
+      "id": "e13c7837-c892-460d-96ba-9122d8c0a4cd",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6c135092-c89a-45f7-960b-31d107a6c3f8",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": "Detalhamento de Entregas e Metas",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "0a94d2a5-b73e-4f3c-9e3a-341c9847d603",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "toRecipients": "[E-MAIL]",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.emailBody }}",
+        "additionalFields": {
+          "attachments": {
+            "attachments": [
+              {
+                "binaryPropertyName": "relatorio_0"
+              },
+              {
+                "binaryPropertyName": "relatorio_1"
+              }
+            ]
+          },
+          "ccRecipients": "[E-MAIL 2]",
+          "bodyContentType": "html"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        2144,
+        0
+      ],
+      "id": "246a7406-98f4-4841-b50d-e5a32575ee75",
+      "name": "Send a message",
+      "webhookId": "6cda4361-28fe-4f06-a47b-25c45d4d7c23",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "T3RBx5r0a7IBckwG",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiData = $(\"Analyze Performance and Generate Insights\").first().json;\n// BUSCA OS ARQUIVOS: Pega os binários lá do nó de download\nconst arquivosOriginais = $(\"Download a file\").all();\n\nlet feedbacks;\n\n// Parse JSON string if output is a string, otherwise use as-is\nif (typeof aiData.output === 'string') {\n    try {\n        feedbacks = JSON.parse(aiData.output);\n    } catch (e) {\n        feedbacks = aiData.output;\n    }\n} else {\n    feedbacks = aiData.output || aiData;\n}\n\n// Começamos o HTML puro\nlet html = `<div style=\"font-family: Arial, sans-serif; line-height: 1.6;\">`;\nhtml += `<h2 style=\"color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;\">📊 FEEDBACKS SEMANAIS - EQUIPE CONTÁBIL</h2>`;\n\nif (Array.isArray(feedbacks)) {\n    feedbacks.forEach(f => {\n        const icon = f.tem_pendencias_criticas ? '⚠️' : '✅';\n        const color = f.tem_pendencias_criticas ? '#e74c3c' : '#2ecc71';\n        \n        html += `<div style=\"margin-top: 20px; padding: 15px; border-left: 5px solid ${color}; background-color: #fcfcfc;\">`;\n        html += `<strong style=\"font-size: 16px; color: #333;\">${icon} ${f.colaborador}</strong><br>`;\n        html += `<p style=\"margin: 10px 0; color: #444;\">${f.mensagem_teams.replace(/\\n/g, '<br>')}</p>`;\n        html += `</div>`;\n    });\n} else {\n    html += `<p>${String(feedbacks).replace(/\\n/g, '<br>')}</p>`;\n}\n\nhtml += `<p style=\"font-size: 12px; color: #999; margin-top: 30px;\">Relatório Automático de Gestão</p></div>`;\n\n// RESULTADO FINAL: Texto formatado + Assunto + Binários organizados\nconst result = {\n    json: {\n        emailBody: html,\n        subject: `Feedbacks Semanais - ${new Date().toLocaleDateString('pt-BR')}`\n    },\n    binary: {}\n};\n\n// MAPEAMENTO: Nomeia os arquivos para o Outlook identificar preservando nomes originais\narquivosOriginais.forEach((item, index) => {\n    // Pega o binário da propriedade 'data' e preserva o nome original do arquivo\n    if (item.binary && item.binary.data) {\n        result.binary[`relatorio_${index}`] = {\n            ...item.binary.data,\n            fileName: item.json.name || item.binary.data.fileName\n        };\n    }\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ],
+      "id": "ef2d6c05-ffe5-4997-b12d-d179354ff548",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search a folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search a folder": {
+      "main": [
+        [
+          {
+            "node": "Get items in a folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download a file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get items in a folder": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Performance and Generate Insights": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze Performance and Generate Insights",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "Analyze Performance and Generate Insights",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Download a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Analyze Performance and Generate Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "11f60d16-7728-4973-8f20-b22abb9d9ad3",
+  "meta": {
+    "instanceId": "79a72b7b1b126244af74e361d5b7af740d0e34e894f1dc26d6641771353eceeb"
+  },
+  "id": "UxKASiFDnAYKtcGN",
+  "tags": []
+}
