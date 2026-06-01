@@ -176,6 +176,18 @@ def garantir_colunas_temporais(df):
 
     return df
 
+def achatar_colunas_multiindex(df):
+    if not isinstance(df.columns, pd.MultiIndex):
+        return df.copy()
+
+    df_out = df.copy()
+    colunas_flat = []
+    for col in df_out.columns:
+        partes = [str(x).strip() for x in col if pd.notna(x) and str(x).strip() not in ['', 'None']]
+        colunas_flat.append(' | '.join(partes) if partes else '')
+    df_out.columns = colunas_flat
+    return df_out
+
 # ==============================================================================
 # PÁGINA 1: GERAR BASE
 # ==============================================================================
@@ -645,13 +657,12 @@ def page_relatorio_status():
 # PÁGINA 4: RELATÓRIO SEMANAL POR MÊS
 # ==============================================================================
 def page_relatorio_semanal_mes():
-    st.markdown('<div class="main-header">4. Relatório Semanal por Mês</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">4. Relatório Semanal Consolidado</div>', unsafe_allow_html=True)
     base_file = st.file_uploader("Upload da Base (Gerada na etapa 1)", type=['xlsx'], key='base3')
 
-    st.info("A semana do mês segue o calendário do mês. Ex.: 13/01/2026 cai na SM 3 e 25/01/2026 cai na SM 4.")
+    st.info("Este relatório junta todos os meses em um único quadro, com colunas por mês, semana do mês e status (CL, AB, TOTAL).")
 
     colaboradores_filtro = []
-    periodo_selecionado = None
 
     if base_file:
         try:
@@ -659,21 +670,9 @@ def page_relatorio_semanal_mes():
             df_preview.columns = [c.strip() for c in df_preview.columns]
             df_preview = garantir_colunas_temporais(df_preview)
 
-            df_preview['Periodo Base'] = df_preview['Data Base'].dt.to_period('M')
-            periodos = sorted(df_preview['Periodo Base'].dropna().unique())
-
-            if periodos:
-                mapa_periodos = {
-                    formato_mes_ano_pt(p.to_timestamp(), maiusculo=True): p
-                    for p in periodos
-                }
-                opcoes_periodo = list(mapa_periodos.keys())
-                periodo_label = st.selectbox("Selecione o mês do relatório", options=opcoes_periodo, index=len(opcoes_periodo) - 1)
-                periodo_selecionado = mapa_periodos[periodo_label]
-
-                mask_colabs = df_preview['Responsável'].astype(str).str.contains("Total|Crescimento", case=False, na=False)
-                nomes_base = sorted(df_preview[~mask_colabs]['Responsável'].dropna().astype(str).str.strip().unique())
-                colaboradores_filtro = st.multiselect("Filtrar colaboradores", options=nomes_base, default=nomes_base)
+            mask_colabs = df_preview['Responsável'].astype(str).str.contains("Total|Crescimento", case=False, na=False)
+            nomes_base = sorted(df_preview[~mask_colabs]['Responsável'].dropna().astype(str).str.strip().unique())
+            colaboradores_filtro = st.multiselect("Filtrar colaboradores", options=nomes_base, default=nomes_base)
         except Exception as e:
             st.warning(f"Não consegui ler a base para pré-visualização: {e}")
 
@@ -691,34 +690,24 @@ def page_relatorio_semanal_mes():
 
             df['Periodo Base'] = df['Data Base'].dt.to_period('M')
 
-            if periodo_selecionado is None:
-                periodos_disponiveis = sorted(df['Periodo Base'].dropna().unique())
-                if not periodos_disponiveis:
-                    st.error("Não encontrei datas válidas na base para montar o relatório.")
-                    return
-                periodo_selecionado = periodos_disponiveis[-1]
-
-            df_mes = df[df['Periodo Base'] == periodo_selecionado].copy()
-
             if colaboradores_filtro:
                 lista_norm = [x.strip().lower() for x in colaboradores_filtro]
-                df_mes = df_mes[df_mes['Responsável'].astype(str).str.strip().str.lower().isin(lista_norm)]
+                df = df[df['Responsável'].astype(str).str.strip().str.lower().isin(lista_norm)]
 
-            df_mes = df_mes[df_mes['Responsável'].notna()].copy()
-            df_mes['Responsável'] = df_mes['Responsável'].astype(str).str.strip()
-            df_mes['Semana do mês'] = pd.to_numeric(df_mes['Semana do mês'], errors='coerce')
-            df_mes = df_mes.dropna(subset=['Semana do mês'])
-            df_mes['Semana do mês'] = df_mes['Semana do mês'].astype(int)
+            df = df[df['Responsável'].notna()].copy()
+            df['Responsável'] = df['Responsável'].astype(str).str.strip()
+            df['Semana do mês'] = pd.to_numeric(df['Semana do mês'], errors='coerce')
+            df = df.dropna(subset=['Semana do mês', 'Periodo Base'])
+            df['Semana do mês'] = df['Semana do mês'].astype(int)
 
-            if df_mes.empty:
-                st.warning("Não há registros para o mês selecionado.")
+            if df.empty:
+                st.warning("Não há registros válidos para montar o relatório.")
                 return
 
-            max_semana = int(df_mes['Semana do mês'].max())
-            semanas = list(range(1, max_semana + 1))
+            df['Mês Base'] = df['Periodo Base'].dt.to_timestamp().apply(lambda x: formato_mes_ano_pt(x, maiusculo=True))
 
             base_agregada = (
-                df_mes.groupby(['Responsável', 'Semana do mês'])
+                df.groupby(['Responsável', 'Mês Base', 'Semana do mês'])
                 .agg(
                     CL=('Tarefa Concluída', 'sum'),
                     TOTAL=('Tarefa Concluída', 'size')
@@ -727,22 +716,33 @@ def page_relatorio_semanal_mes():
             )
             base_agregada['AB'] = base_agregada['TOTAL'] - base_agregada['CL']
 
+            meses_ordenados = sorted(
+                base_agregada['Mês Base'].dropna().unique(),
+                key=lambda x: parse_comp(x.lower().replace(' ', '')) if isinstance(x, str) and '/' in x else (9999, 99)
+            )
             responsaveis = sorted(base_agregada['Responsável'].dropna().astype(str).unique())
-            resultado = pd.DataFrame(index=responsaveis)
 
-            for semana in semanas:
-                sub = base_agregada[base_agregada['Semana do mês'] == semana].set_index('Responsável')
-                for metric in ['CL', 'AB', 'TOTAL']:
-                    resultado[(f'SM {semana}', metric)] = sub[metric] if metric in sub.columns else np.nan
+            colunas = []
+            for mes in meses_ordenados:
+                semanas_mes = sorted(base_agregada.loc[base_agregada['Mês Base'] == mes, 'Semana do mês'].dropna().astype(int).unique())
+                for semana in semanas_mes:
+                    for metric in ['CL', 'AB', 'TOTAL']:
+                        colunas.append((mes, f'SM {semana}', metric))
+
+            resultado = pd.DataFrame(index=responsaveis, columns=pd.MultiIndex.from_tuples(colunas))
+
+            for _, linha in base_agregada.iterrows():
+                resultado.loc[linha['Responsável'], (linha['Mês Base'], f"SM {int(linha['Semana do mês'])}", 'CL')] = int(linha['CL'])
+                resultado.loc[linha['Responsável'], (linha['Mês Base'], f"SM {int(linha['Semana do mês'])}", 'AB')] = int(linha['AB'])
+                resultado.loc[linha['Responsável'], (linha['Mês Base'], f"SM {int(linha['Semana do mês'])}", 'TOTAL')] = int(linha['TOTAL'])
 
             resultado = resultado.fillna(0).astype(int)
             resultado.index.name = 'Responsável'
             resultado.loc['TOTAL GERAL'] = resultado.sum(axis=0)
             resultado = resultado.reset_index()
+            resultado_export = achatar_colunas_multiindex(resultado)
 
-            display_mes = formato_mes_ano_pt(periodo_selecionado.to_timestamp(), maiusculo=True)
-
-            st.markdown(f"### DATA DE CONCLUSÃO | {display_mes}")
+            st.markdown("### DATA DE CONCLUSÃO | TODOS OS MESES")
             st.dataframe(resultado, use_container_width=True)
 
             html_css = """
@@ -756,13 +756,13 @@ def page_relatorio_semanal_mes():
             </style>
             """
 
-            html_tabela = resultado.to_html(index=False, escape=False)
+            html_tabela = resultado_export.to_html(index=False, escape=False)
             html_final = f"""
             <html>
             <head><meta charset='utf-8'>{html_css}</head>
             <body>
                 <h1>Relatório Semanal por Mês</h1>
-                <h2>DATA DE CONCLUSÃO | {display_mes}</h2>
+                <h2>DATA DE CONCLUSÃO | TODOS OS MESES</h2>
                 {html_tabela}
             </body>
             </html>
@@ -770,19 +770,19 @@ def page_relatorio_semanal_mes():
 
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                resultado.to_excel(writer, sheet_name='Relatorio_Semanal_Mes', index=False)
+                resultado_export.to_excel(writer, sheet_name='Relatorio_Semanal_Mes', index=False)
 
             st.success("Relatório Semanal gerado!")
             st.download_button(
                 "📥 Baixar Relatório Semanal",
                 output.getvalue(),
-                f"Relatorio_Semanal_{display_mes.replace('/', '-')}.xlsx",
+                "Relatorio_Semanal_Todos_os_Meses.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
             st.download_button(
                 "📥 Baixar HTML Semanal",
                 html_final,
-                f"Relatorio_Semanal_{display_mes.replace('/', '-')}.html",
+                "Relatorio_Semanal_Todos_os_Meses.html",
                 mime="text/html"
             )
 
